@@ -1,0 +1,449 @@
+{% comment %}
+{{ 'https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js' | script_tag }}
+{{ 'https://files.codepedia.info/uploads/iScripts/html2canvas.js' | script_tag }}
+{{ 'https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js' | script_tag }}
+{% endcomment %}
+
+{{ 'fabric.js' | asset_url | script_tag }}
+{{ 'tshirtEditor.js' | asset_url | script_tag }}
+{{ 'jquery.miniColors.min.js' | asset_url | script_tag }}
+{{ 'html2canvas.js' | asset_url | script_tag }}
+{{ 'bootstrap.min.js' | asset_url | script_tag }}
+
+{{ 'jquery.miniColors.css' | asset_url | stylesheet_tag }}
+{{ 'bootstrap.min.css' | asset_url | stylesheet_tag }}
+{{ 'bootstrap-responsive.min.css' | asset_url | stylesheet_tag }}
+
+<div itemscope itemtype="http://schema.org/Product">
+
+  {% assign current_variant = product.selected_or_first_available_variant %}
+  {% assign featured_image = current_variant.featured_image | default: product.featured_image %}
+
+  <meta itemprop="url" content="{{ shop.url }}{{ current_variant.url }}">
+  <meta itemprop="image" content="{{ featured_image | img_url: 'grande' }}">
+
+  <div class="section-header section-header--breadcrumb">
+    {% include 'breadcrumb' %}
+  </div>
+
+  <div class="product-single">
+    <div class="grid product-single__hero">
+      <div class="grid__item large--one-half">
+
+        {% if settings.product_thumbnails_position == 'below' or product.images.size < 2 %}
+
+        <div class="product-single__photos" id="ProductPhoto" style="margin: 0 auto; position: relative; background-color: rgb(255, 255, 255);">
+          <img id="tshirtFacing" src="{{ featured_image | img_url: '1024x1024' }}" alt="{{ featured_image.alt | escape }}" id="ProductPhotoImg"{% if settings.product_image_zoom_type == 'zoom-in' %} data-zoom="{{ featured_image | img_url: '1024x1024' }}"{% endif %} data-image-id="{{ featured_image.id }}">
+          <div id="drawingArea" style="position: absolute;top: 80px;left: 134px;z-index: 10;width: 200px;height: 400px;">          
+            <canvas id="tcanvas" width=200 height="400" class="hover" style="-webkit-user-select: none;"></canvas>
+          </div>
+        </div>
+
+          {% if product.images.size > 1 %}
+
+            <ul class="product-single__thumbnails grid-uniform" id="ProductThumbs">
+              {% for image in product.images %}
+                <li class="grid__item large--one-third medium-down--one-third">
+                  <a data-image-id="{{ image.id }}" href="{{ image.src | img_url: '1024x1024' }}" class="product-single__thumbnail">
+                    <img src="{{ image.src | img_url: 'grande' }}" alt="{{ image.alt | escape }}" crossOrigin = "anonymous" >
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+
+          {% endif %}
+
+        {% else %}
+
+          <div class="grid">
+
+            <div class="grid__item four-fifths product-single__photos" id="ProductPhoto">
+              <img src="{{ featured_image | img_url: '1024x1024' }}" alt="{{ featured_image.alt | escape }}" id="ProductPhotoImg"{% if settings.product_image_zoom_type == 'zoom-in' %} data-zoom="{{ featured_image | img_url: '1024x1024' }}"{% endif %} data-image-id="{{ featured_image.id }}">
+            </div>
+
+            <div class="grid__item one-fifth">
+
+              <ul class="grid product-single__thumbnails" id="ProductThumbs">
+                {% for image in product.images %}
+                  <li class="grid__item">
+                    <a data-image-id="{{ image.id }}" href="{{ image.src | img_url: '1024x1024' }}" class="product-single__thumbnail">
+                      <img src="{{ image.src | img_url: 'grande' }}" alt="{{ image.alt | escape }}">
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+
+            </div>
+
+          </div>
+
+        {% endif %}
+
+        {% if settings.product_image_zoom_type == 'lightbox' %}
+        <ul class="gallery" class="hidden">
+          {% for image in product.images %}
+          <li data-image-id="{{ image.id }}" class="gallery__item" data-mfp-src="{{ image | img_url: '1024x1024' }}"></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+      </div>
+      <div class="grid__item large--one-half">
+        {% comment %}
+          <h3 itemprop="brand">{{ product.vendor }}</h3>
+        {% endcomment %}
+        <h1 itemprop="name" content="{{ product.title }}{% unless current_variant.title == 'Default Title' %} - {{ current_variant.title }}{% endunless %}">{{ product.title }}</h1>
+
+        <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
+
+          <meta itemprop="priceCurrency" content="{{ shop.currency }}">
+          <link itemprop="availability" href="http://schema.org/{% if current_variant.available %}InStock{% else %}OutOfStock{% endif %}">
+
+          <div class="product-single__prices">
+            <span id="ProductPrice" class="product-single__price" itemprop="price" content="{{ current_variant.price | divided_by: 100.00 }}">
+              {{ current_variant.price | money }}
+            </span>
+
+            {% if product.compare_at_price_max > product.price %}
+              <s id="ComparePrice" class="product-single__sale-price">
+                {{ current_variant.compare_at_price | money }}
+              </s>
+            {% endif %}
+          </div>
+
+        </div>
+        
+        <div class = "row" >
+          <div class = "btn-group pull-left">
+            <button class="btn tab-selector" data-target = "text" ><i class="icon-text-width" ></i></button>
+            <button class="btn tab-selector" data-target = "image" ><i class="icon-picture" ></i></button>
+              <button class="btn" id="bring-to-front" title="Bring to Front"><i class="icon-fast-backward rotate" ></i></button>
+              <button class="btn" id="send-to-back" title="Send to Back"><i class="icon-fast-forward rotate" ></i></button>
+              <button id="remove-selected" class="btn" title="Delete selected item"><i class="icon-trash" s></i></button>
+          </div>
+
+        </div>
+
+        <div class = "row" >
+          <div class="btn-group inline" id="texteditor" style="margin-top: 19px;">              
+            <button id="font-family" class="btn dropdown-toggle" data-toggle="dropdown" title="Font Style"><i class="icon-font" style="width:19px;height:19px;"></i></button>                          
+            <ul class="dropdown-menu" role="menu" aria-labelledby="font-family-X">
+              <li><a tabindex="-1" href="#" onclick="setFont('Arial');" class="Arial">Arial</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Helvetica');" class="Helvetica">Helvetica</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Myriad Pro');" class="MyriadPro">Myriad Pro</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Delicious');" class="Delicious">Delicious</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Verdana');" class="Verdana">Verdana</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Georgia');" class="Georgia">Georgia</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Courier');" class="Courier">Courier</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Comic Sans MS');" class="ComicSansMS">Comic Sans MS</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Impact');" class="Impact">Impact</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Monaco');" class="Monaco">Monaco</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Optima');" class="Optima">Optima</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Hoefler Text');" class="Hoefler Text">Hoefler Text</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Plaster');" class="Plaster">Plaster</a></li>
+              <li><a tabindex="-1" href="#" onclick="setFont('Engagement');" class="Engagement">Engagement</a></li>
+            </ul>
+            <button id="text-bold" class="btn" data-original-title="Bold"><img src="{{ 'font_bold.png' | asset_url }}" height="" width=""></button>
+            <button id="text-italic" class="btn" data-original-title="Italic"><img src="{{ 'font_italic.png' | asset_url }}" height="" width=""></button>
+            <button id="text-strike" class="btn" title="Strike" style=""><img src="{{ 'font_strikethrough.png' | asset_url }}" height="" width=""></button>
+            <button id="text-underline" class="btn" title="Underline" style=""><img src="{{ 'font_underline.png' | asset_url }}"></button>
+            <button class="btn" href="#" rel="tooltip" data-placement="top" data-original-title="Font Color"><input type="hidden" id="text-fontcolor" class="color-picker" size="7" value="#000000"></button>
+            <button class="btn" href="#" rel="tooltip" data-placement="top" data-original-title="Font Border Color"><input type="hidden" id="text-strokecolor" class="color-picker" size="7" value="#000000"></button>
+            <!--<button  type="button" onclick="zoomin()" class="btn btn-lg btn-primary">Zoom In</button>
+<button type="button" onclick="zoomout()" class="btn btn-lg btn-primary">Zoom Out</button> -->            
+          </div>                             
+        </div>
+        
+        <!-- Text Tab -->
+          <div style="border: 1px solid rgb(200, 202, 201); " class="row tab tab-text">
+            <div style="">
+              <h3 style="background-color: rgb(56, 69, 79);color: white;text-align: center;">Enter Text Here</h3>
+            </div>
+            <div class="tab-pane">
+              <div class="well" style="background: none; border: none; box-shadow: none; margin: 0px;">
+                <div class="input-append">
+                  <input class="span2" id="text-string" type="text" placeholder="add text here..." style = "height: 30px; width:85%;" >
+                  <button id="add-text" class="btn" title="Add text"><i class="icon-share-alt"></i></button>
+                </div>
+              </div>
+            </div>
+          </div><!-- End of Text Tab -->
+          
+          <!-- Image Upoad Tab -->
+          <div class="row tab tab-image" style = "display:none" >
+            <form class="well" id="submit_form" action="upload.php" method="post" enctype="multipart/form-data">
+              <div class="form-group">
+                <label for="file">Upload Image</label>
+                <input type="file" name="file">
+                <p class="help-block">(Image Size:100*100)</p>
+              </div>
+              <input type="submit" id="upload_button" class="btn btn-lg btn-primary" value="Upload">      
+              <div id="avatarlist" style="margin-top: 20px;">
+               
+              </div>  
+            </form>
+          </div><!-- End of Image Upload Tab -->
+
+          <!-- Image Color Area -->
+          <div class = "row" >
+            <div class="tab-content">
+              <div class="tab-pane active" id="tab1">
+                <div class="well">
+                  <ul class="nav">
+                    <li class="color-preview" title="White" style="background-color:#ffffff;"></li>
+                    <li class="color-preview" title="Dark Heather" style="background-color:#616161;"></li>
+                    <li class="color-preview" title="Gray" style="background-color:#f0f0f0;"></li>
+                    <li class="color-preview" title="Charcoal" style="background-color:#5b5b5b;"></li>
+                    <li class="color-preview" title="Black" style="background-color:#222222;"></li>
+                    <li class="color-preview" title="Heather Orange" style="background-color:#fc8d74;"></li>
+                    <li class="color-preview" title="Heather Dark Chocolate" style="background-color:#432d26;"></li>
+                    <li class="color-preview" title="Salmon" style="background-color:#eead91;"></li>
+                    <li class="color-preview" title="Chesnut" style="background-color:#806355;"></li>
+                    <li class="color-preview" title="Dark Chocolate" style="background-color:#382d21;"></li>
+                    <li class="color-preview" title="Citrus Yellow" style="background-color:#faef93;"></li>
+                    <li class="color-preview" title="Avocado" style="background-color:#aeba5e;"></li>
+                    <li class="color-preview" title="Kiwi" style="background-color:#8aa140;"></li>
+                    <li class="color-preview" title="Iris  h Green" style="background-color:#1f6522;"></li>
+                    <li class="color-preview" title="Scrub Green" style="background-color:#13afa2;"></li>
+                    <li class="color-preview" title="Teal Ice" style="background-color:#b8d5d7;"></li>
+                    <li class="color-preview" title="Heather Sapphire" style="background-color:#15aeda;"></li>
+                    <li class="color-preview" title="Sky" style="background-color:#a5def8;"></li>
+                    <li class="color-preview" title="Antique Sapphire" style="background-color:#0f77c0;"></li>
+                    <li class="color-preview" title="Heather Navy" style="background-color:#3469b7;"></li>              
+                    <li class="color-preview" title="Cherry Red" style="background-color:#c50404;"></li>
+                  </ul>
+                </div>            
+              </div>  
+            </div>
+          </div><!-- End of Image Color Area -->        
+          
+          <form action="/cart/add" method="post" enctype="multipart/form-data" id="AddToCartForm">
+            <select name="id" id="productSelect" class="product-single__variants">
+              {% for variant in product.variants %}
+                <option {% unless variant.available %} disabled="disabled" {% endunless %} {% if variant == current_variant %} selected="selected" {% endif %} data-sku="{{ variant.sku }}" value="{{ variant.id }}">{{ variant.title }} - {% if variant.available %}{{ variant.price | money_with_currency }}{% else %}{{ 'products.product.sold_out' | t }}{% endif %}</option>
+              {% endfor %}
+            </select>
+
+            <div class="product-single__quantity{% unless settings.product_quantity_enable %} is-hidden{% endunless %}">
+              <label for="Quantity">{{ 'products.product.quantity' | t }}</label>
+              <input type="number" id="Quantity" name="quantity" value="1" min="1" class="quantity-selector">
+            </div>
+
+            <button type="submit" name="add" id="AddToCart" class="btn">
+              <span id="AddToCartText">{{ 'products.product.add_to_cart' | t }}</span>
+            </button>
+            <button type="button" name="addToTheBag" id="addToTheBag" class="btn">
+              Set Image
+            </button>
+            <input type="hidden" id="prop_template" name="properties[Template Image]">
+          </form>
+
+          <div class="product-description rte" itemprop="description">
+            {{ product.description }}
+          </div>
+
+        	<div id="img-out"></div>
+        
+          {% if settings.social_sharing_products %}
+            <hr class="hr--clear hr--small">
+            {% include 'social-sharing' %}
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {% if settings.product_related_enable %}
+    {% include 'related-products' %}
+  {% endif %}
+
+</div>
+
+<style type="text/css">
+  .color-preview {
+    border: 1px solid #CCC;
+    margin: 2px;
+    zoom: 1;
+    vertical-align: top;
+    display: inline-block;
+    cursor: pointer;
+    overflow: hidden;
+    width: 20px;
+    height: 20px;
+  }
+  .rotate {  
+    -webkit-transform:rotate(90deg);
+    -moz-transform:rotate(90deg);
+    -o-transform:rotate(90deg);
+    -ms-transform:rotate(90deg);		   
+  }		
+  .Arial{font-family:"Arial";}
+  .Helvetica{font-family:"Helvetica";}
+  .MyriadPro{font-family:"Myriad Pro";}
+  .Delicious{font-family:"Delicious";}
+  .Verdana{font-family:"Verdana";}
+  .Georgia{font-family:"Georgia";}
+  .Courier{font-family:"Courier";}
+  .ComicSansMS{font-family:"Comic Sans MS";}
+  .Impact{font-family:"Impact";}
+  .Monaco{font-family:"Monaco";}
+  .Optima{font-family:"Optima";}
+  .HoeflerText{font-family:"Hoefler Text";}
+  .Plaster{font-family:"Plaster";}
+  .Engagement{font-family:"Engagement";}
+
+  .upload-cancel {
+    background-color: #525252;
+    color: #F7F7F7;
+    font-weight: 700;
+    font-family: Arial,Helvetica,sans-serif;
+    border-radius: 12px;
+    border: 0;
+    height: 22px;
+    width: 22px;
+    padding: 4px;
+    right: -5px;
+    top: -6px;
+    margin: 0;
+    line-height: 17px;
+    cursor: pointer;
+    font-size: 12px;
+    vertical-align: middle;
+    margin-top: -30px;
+    margin-left: -26px;
+  }
+  
+  input[type="file"]{
+    height: auto;
+    line-height: 21px;
+  }
+</style>
+
+{{ 'option_selection.js' | shopify_asset_url | script_tag }}
+<script>
+  var selectCallback = function(variant, selector) {
+    timber.productPage({
+      money_format: "{{ shop.money_format }}",
+      variant: variant,
+      selector: selector,
+      translations: {
+        add_to_cart : "{{ 'products.product.add_to_cart' | t }}",
+        sold_out : "{{ 'products.product.sold_out' | t }}",
+        unavailable : "{{ 'products.product.unavailable' | t }}"
+      }
+    });
+  };
+
+  jQuery(function($) {
+    new Shopify.OptionSelectors('productSelect', {
+      product: {{ product | json }},
+      onVariantSelected: selectCallback,
+      enableHistoryState: true
+    });
+
+    // Add label if only one product option and it isn't 'Title'. Could be 'Size'.
+    {% if product.options.size == 1 and product.options.first != 'Title' %}
+      $('.selector-wrapper:eq(0)').prepend('<label for="productSelect-option-0">{{ product.options.first | escape }}</label>');
+    {% endif %}
+
+    // Hide selectors if we only have 1 variant and its title contains 'Default'.
+    {% if product.variants.size == 1 and product.variants.first.title contains 'Default' %}
+      $('.selector-wrapper').hide();
+    {% endif %}
+  });
+</script>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    
+    // Tab Click
+    $(".tab-selector").click(function(e){
+      e.preventDefault();
+      $('.tab').hide();
+      $('.tab-' + $(this).attr('data-target') ).show();
+    });
+
+    var element = $("#ProductPhoto"); // global variable
+    var getCanvas = ""; // global variable
+    var endpoint = "https://www.enginewiz.com/tshirts/";
+
+    // Upload Whole Image
+    $("#addToTheBag").on('click', function () {		
+      var strSelector = '#ProductPhoto';
+      
+      html2canvas($(strSelector), {
+    	logging: true,
+        allowTaint: true,
+        onrendered: function(canvas) {
+         $("#img-out").html("<img width='100px;' style='border:1px solid #efefef; height='' src='"+canvas.toDataURL()+"' />");
+
+          $.ajax({
+            type: "POST",
+            url: endpoint + "upload_order.php",
+            data: {img: canvas.toDataURL(), action: "save"},
+            success: function(data){
+              console.log(data);
+              $('#prop_template').val( endpoint + data );
+            }																					
+          });					   					
+        }
+      });
+    });
+
+    // Cancel Upload
+    $("body").on('click', ".upload-cancel", function () {
+      $(this).remove();
+      var img_id = $(this).attr('data-img');
+      var img_url = $('#'+img_id).attr('src');
+      console.log(img_url);
+      $.ajax({				
+        type: "POST",
+        url: endpoint + "upload_order.php",
+        data: {img: img_url, action: "delete"},
+        success: function(data){
+          console.log(data);
+          $('#'+img_id).remove();
+        }			
+
+      });
+    });
+
+    // Image Upload for avatar
+    $("#submit_form").on('submit',(function(e) {
+      e.preventDefault();
+      $.ajax({
+        url: endpoint + "upload_image.php",
+        type: "POST",
+        data:  new FormData(this),
+        contentType: false,
+        cache: false,
+        processData:false,
+        success: function(data)
+        {
+          var intRegex = "/uploaded_images/";
+          if(data.search(intRegex) == -1 ){
+            alert(data);	
+
+          }else{
+
+            $("#avatarlist").append("<img style='cursor:pointer;' id=\"img-polaroid-" + $("#avatarlist").find(".img-polaroid").length + "\" class='img-polaroid' src='"+data+"'><button type=\"button\" class=\"upload-cancel\" data-img=\"img-polaroid-" + $("#avatarlist").find(".img-polaroid").length + "\">X</button>");
+
+          }
+
+          console.log(data);
+        },
+        error: function(e) 
+        {
+
+        }          
+      });
+    }));
+    
+    // Image Change
+    $('.product-single__thumbnail').click( function(e){
+      e.preventDefault();
+	  $("#tshirtFacing").attr("src", $(this).attr( 'href' ) );			    	
+    });
+  });
+</script>
